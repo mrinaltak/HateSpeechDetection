@@ -20,6 +20,7 @@ import seaborn as sn
 from utils import *
 from soft_embeddings import SoftEmbedding
 from tqdm import tqdm
+from sklearn.metrics import classification_report
 
 
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -125,9 +126,10 @@ def main():
     model, tokenizer, optimizer, s_wte, args = create_model(args)
     train_model(args, model, optimizer, tokenizer, s_wte, train_dataloader, val_dataloader)
     # validate(args, model, optimizer, tokenizer, s_wte, val_dataloader)
-    test_model(args, model, tokenizer, s_wte, test_a_dataloader, 'subtask_a')
-    test_model(args, model, tokenizer, s_wte, test_b_dataloader, 'subtask_b')
-    test_model(args, model, tokenizer, s_wte, test_c_dataloader, 'subtask_c')
+    tester(args, model, tokenizer, s_wte, test_a_dataloader, 'subtask_a')
+    tester(args, model, tokenizer, s_wte, test_b_dataloader, 'subtask_b')
+    tester(args, model, tokenizer, s_wte, test_c_dataloader, 'subtask_c')
+    # test_model(args, model, tokenizer, s_wte, test_c_dataloader, 'subtask_c')
 
 def save_model(args, epoch, model, optimizer, s_wte):
     # save model
@@ -303,6 +305,8 @@ def test_model(args, model, tokenizer, s_wte, test_dataloader, task_name):
         pos = tokenizer("yes").input_ids[0]
         neg = tokenizer("no").input_ids[0]
         decoder_input_ids = model._shift_right(tokenizer([''],return_tensors="pt").input_ids)
+        if args.cuda:
+            decoder_input_ids = decoder_input_ids.cuda()
 
     for batch in tqdm(test_dataloader):
         sentences = batch['tweet'] # use different length sentences to test batching
@@ -315,8 +319,6 @@ def test_model(args, model, tokenizer, s_wte, test_dataloader, task_name):
             task_number = [1] * bs
         elif task_name == 'subtask_c':
             task_number = [2] * bs +  [3] * bs
-
-        if task_name == 'subtask_c':
             input_ids = input_ids.repeat(2,1)
             attention_mask = attention_mask.repeat(2,1)
         #add prompt tokens
@@ -324,7 +326,7 @@ def test_model(args, model, tokenizer, s_wte, test_dataloader, task_name):
         attention_mask = torch.cat([torch.full((attention_mask.shape[0],args.n_tokens), 1), attention_mask], 1)
 
         if args.cuda:
-            input_ids, attention_mask, decoder_input_ids = input_ids.cuda(), attention_mask.cuda(), decoder_input_ids.cuda()
+            input_ids, attention_mask = input_ids.cuda(), attention_mask.cuda()
 
         with torch.no_grad():
             if args.model in ['T5']:
@@ -375,6 +377,81 @@ def test_model(args, model, tokenizer, s_wte, test_dataloader, task_name):
     else:
         print("Test Acc for ",task_name," = %.4f"%(np.mean(acc)))
     return np.mean(acc)
+
+def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
+    print()
+    print("Testing for ",task_name)
+    print()
+
+    y_pred = []
+    y_true = []
+    model.eval()
+    acc = []
+    gt = []
+    if args.model in ['T5']:
+        pos = tokenizer("yes").input_ids[0]
+        neg = tokenizer("no").input_ids[0]
+        decoder_input_ids = model._shift_right(tokenizer([''],return_tensors="pt").input_ids)
+        if args.cuda:
+            decoder_input_ids = decoder_input_ids.cuda()
+
+    for batch in tqdm(test_dataloader):
+        sentences = batch['tweet'] # use different length sentences to test batching
+        inputs = tokenizer(sentences, return_tensors="pt", padding=True)
+        input_ids, attention_mask = inputs.input_ids, inputs.attention_mask
+
+        bs = input_ids.shape[0]
+        task_number = [0] * bs
+        if task_name == 'subtask_b':
+            task_number = [1] * bs
+        elif task_name == 'subtask_c':
+            task_number = [2] * bs +  [3] * bs
+            input_ids = input_ids.repeat(2,1)
+            attention_mask = attention_mask.repeat(2,1)
+        #add prompt tokens
+        input_ids = torch.cat([torch.tensor(task_number).repeat(args.n_tokens,1).transpose(0,1), input_ids], 1)
+        attention_mask = torch.cat([torch.full((attention_mask.shape[0],args.n_tokens), 1), attention_mask], 1)
+
+        if args.cuda:
+            input_ids, attention_mask = input_ids.cuda(), attention_mask.cuda()
+
+        with torch.no_grad():
+            if args.model in ['T5']:
+                output_dist = model(inputs_embeds=s_wte(input_ids), attention_mask=attention_mask, decoder_input_ids = decoder_input_ids.repeat(input_ids.shape[0],1)).logits
+                output_dist = output_dist[:,-1,[neg, pos]]
+                preds = torch.argmax(output_dist, dim=-1)
+            else:
+                preds = model(inputs_embeds=s_wte(input_ids),attention_mask=attention_mask).logits
+                preds = torch.argmax(preds,dim=1).cpu().numpy()
+
+        if task_name != 'subtask_c':
+            for i,pred in enumerate(preds):
+                if batch['label'][i] in ['OFF', 'TIN']:
+                    gt.append(1)
+                else:
+                    gt.append(0)
+
+                acc.append(pred.cpu().numpy().item())
+        else:
+            for i in range(bs):
+                gt_label = batch['label'][i]
+                if gt_label == 'IND':
+                    gt.append(1)
+                elif gt_label == 'GRP':
+                    gt.append(2)
+                else:
+                    gt.append(0)
+                
+                grp_pred = preds[bs+i]
+                ind_pred = preds[i]
+                if grp_pred == 0 and ind_pred == 1:
+                    acc.append(1)
+                elif grp_pred == 1 and ind_pred == 0:
+                    acc.append(2)
+                else:
+                    acc.append(0)
+    report = classification_report(y_true=gt, y_pred=acc)
+    print(report)
 
 if __name__=='__main__':
     main()
