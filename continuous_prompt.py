@@ -262,6 +262,8 @@ def validate(args, model, optimizer, tokenizer, s_wte, dataloader):
         pos = tokenizer("yes").input_ids[0]
         neg = tokenizer("no").input_ids[0]
         decoder_input_ids = model._shift_right(tokenizer([''],return_tensors="pt").input_ids)
+        if args.cuda:
+            decoder_input_ids = decoder_input_ids.cuda()
 
     for batch in tqdm(dataloader):
         if args.model in ['T5']:
@@ -278,7 +280,7 @@ def validate(args, model, optimizer, tokenizer, s_wte, dataloader):
         attention_mask = torch.cat([torch.full((attention_mask.shape[0],args.n_tokens), 1), attention_mask], 1)
         
         if args.cuda:
-            input_ids, attention_mask, decoder_input_ids = input_ids.cuda(), attention_mask.cuda(), decoder_input_ids.cuda()
+            input_ids, attention_mask = input_ids.cuda(), attention_mask.cuda()
         with torch.no_grad():
             if args.model in ['T5']:    
                 output_dist = model(inputs_embeds=s_wte(input_ids), attention_mask=attention_mask, decoder_input_ids = decoder_input_ids.repeat(input_ids.shape[0],1)).logits
