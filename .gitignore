@@ -1,4 +1,8 @@
 t5_cache/
 olid_cache/
+bert_cache/
+electra_cache/
 .ipynb_checkpoints/
 __pycache__
+*.pth
+*.png
