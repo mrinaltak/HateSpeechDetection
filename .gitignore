@@ -2,6 +2,7 @@ t5_cache/
 olid_cache/
 bert_cache/
 electra_cache/
+hateval_cache/
 .ipynb_checkpoints/
 __pycache__
 *.pth

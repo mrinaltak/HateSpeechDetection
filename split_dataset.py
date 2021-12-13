@@ -15,5 +15,5 @@ s1 = pd.merge(val, train, how='inner', on=['id'])
 assert len(s1) == len(val)
 
 val.to_csv('./OLID_dataset/olid_val_v2.csv',sep='\t')
-final.to_csv('./OLID_dataset/olid_train_v3.csv',sep='\t')
+final.to_csv('./OLID_dataset/olid_train_v3.csv',sep='\t', index=False)
 
