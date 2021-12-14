@@ -7,3 +7,4 @@ hateval_cache/
 __pycache__
 *.pth
 *.png
+.DS_Store
