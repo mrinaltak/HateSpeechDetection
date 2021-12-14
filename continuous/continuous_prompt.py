@@ -37,7 +37,7 @@ def arg_parse():
     parser.add_argument('--prefix', type=str, default='Continuous', help='prefix for saving stuff')
 
     # meta setting
-    parser.add_argument('--data_path', type=str, default='./OLID_dataset/', help='Root dataset')
+    parser.add_argument('--data_path', type=str, default='../OLID_dataset/', help='Root dataset')
     parser.add_argument('--seed', type=int, default=0, help='fix random seed')
     parser.add_argument('--batch_size', type=int, default=8, help='Size of training batch')
     parser.add_argument('--epochs', type=int, default=5, help='Number of Epochs to Run')
@@ -64,19 +64,26 @@ def arg_parse():
 def create_model(args):
     model_name = args.model
     if model_name == 'T5':
-        tokenizer = T5Tokenizer.from_pretrained('t5-small', cache_dir='./t5_cache')
-        model = T5ForConditionalGeneration.from_pretrained('t5-small', cache_dir='./t5_cache')
+        tokenizer = T5Tokenizer.from_pretrained('t5-small', cache_dir='../t5_cache')
+        model = T5ForConditionalGeneration.from_pretrained('t5-small', cache_dir='../t5_cache')
     elif model_name == "BERT":
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', cache_dir='./bert_cache')
-        model = BertForSequenceClassification.from_pretrained('bert-base-uncased', cache_dir='./bert_cache')
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', cache_dir='../bert_cache')
+        model = BertForSequenceClassification.from_pretrained('bert-base-uncased', cache_dir='../bert_cache')
     elif model_name == "ELECTRA":
-        tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator', cache_dir='./electra_cache')
-        model = ElectraForSequenceClassification.from_pretrained('google/electra-small-discriminator', cache_dir='./electra_cache')
+        tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator', cache_dir='../electra_cache')
+        model = ElectraForSequenceClassification.from_pretrained('google/electra-small-discriminator', cache_dir='../electra_cache')
     else:
         raise NotImplementedError('Model not supported: {}'.format(model_name))
     
-    for param in model.parameters():
-        param.requires_grad = False
+    print("Freezing model params")
+    if model_name in ['BERT', 'ELECTRA']:
+        print("unfreeze classification head")
+        for name, param in model.named_parameters():
+            if 'classifier' not in name: # classifier layer
+                param.requires_grad = False
+    else:
+        for name, param in model.named_parameters():
+            param.requires_grad = False
 
     #attach soft embeddings layer
     s_wte = SoftEmbedding(model.get_input_embeddings(), 
@@ -431,7 +438,7 @@ def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
                 else:
                     gt.append(0)
 
-                acc.append(pred.cpu().numpy().item())
+                acc.append(pred)
         else:
             for i in range(bs):
                 gt_label = batch['label'][i]
