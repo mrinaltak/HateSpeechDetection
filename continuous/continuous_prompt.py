@@ -11,6 +11,7 @@ import sklearn.metrics
 import random
 import argparse
 import time
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -395,6 +396,7 @@ def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
     model.eval()
     acc = []
     gt = []
+    input_text = []
     if args.model in ['T5']:
         pos = tokenizer("yes").input_ids[0]
         neg = tokenizer("no").input_ids[0]
@@ -426,7 +428,7 @@ def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
             if args.model in ['T5']:
                 output_dist = model(inputs_embeds=s_wte(input_ids), attention_mask=attention_mask, decoder_input_ids = decoder_input_ids.repeat(input_ids.shape[0],1)).logits
                 output_dist = output_dist[:,-1,[neg, pos]]
-                preds = torch.argmax(output_dist, dim=-1)
+                preds = torch.argmax(output_dist, dim=-1).cpu().numpy()
             else:
                 preds = model(inputs_embeds=s_wte(input_ids),attention_mask=attention_mask).logits
                 preds = torch.argmax(preds,dim=1).cpu().numpy()
@@ -439,9 +441,11 @@ def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
                     gt.append(0)
 
                 acc.append(pred)
+                input_text.append(sentences[i])
         else:
             for i in range(bs):
                 gt_label = batch['label'][i]
+                input_text.append(sentences[i])
                 if gt_label == 'IND':
                     gt.append(1)
                 elif gt_label == 'GRP':
@@ -458,6 +462,9 @@ def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
                 else:
                     acc.append(0)
     report = classification_report(y_true=gt, y_pred=acc)
+    with open("cache/OffensEval_" + args.prefix + "_" + task_name + "_" + args.model + "preds.pkl", "wb") as f:
+        pickle.dump([input_text,gt,acc], f)
+
     print(report)
 
 if __name__=='__main__':

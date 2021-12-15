@@ -11,6 +11,7 @@ import sklearn.metrics
 import random
 import argparse
 import time
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -287,6 +288,7 @@ def tester(args, model, tokenizer, s_wte, test_dataloader):
     task_preds = [[],[],[]]
     task_gt = [[],[],[]]
     emr = []
+    input_text = []
 
     model.eval()
     if args.model in ['T5']:
@@ -326,6 +328,8 @@ def tester(args, model, tokenizer, s_wte, test_dataloader):
             task_gt[0].append(batch['HS'][i].cpu().numpy().item())
             task_gt[1].append(batch['TR'][i].cpu().numpy().item())
             task_gt[2].append(batch['AG'][i].cpu().numpy().item())
+            input_text.append(sentences[i])
+
             
             hs_pred = preds[i]
             tr_pred = preds[bs+i]
@@ -368,6 +372,9 @@ def tester(args, model, tokenizer, s_wte, test_dataloader):
 
     mean = (np.array(metrics0)[:-1]+np.array(metrics1)[:-1]+np.array(metrics2)[:-1])/3
     print("AVG Precision {}, Recall {}, F1 {}\n".format(mean[0],mean[1],mean[2]))
+
+    with open("cache/HatEval_" + args.prefix + "_" + args.model + "_preds.pkl", "wb") as f:
+        pickle.dump([input_text,task_gt,task_preds], f)
 
 
 if __name__=='__main__':
