@@ -35,7 +35,7 @@ https://github.com/mrinaltak/HateSpeechDetection/blob/main/Baselines/
    3. The weights for the T-5 small with discrete prompts for OffensEval are present here: 
   HatEval: https://drive.google.com/drive/folders/16we4QB28e_gM11TsbhF6253VZ-11miLH?usp=sharing
 
-### BERT NLI
+### BERT NLI with discrete hypotheses
 1. Notebook to run BERT NLI model on Hateval dataset: https://github.com/mrinaltak/HateSpeechDetection/blob/main/Sentence%20Entailment/Sentence_Entailment_Hateval.ipynb
 2. Notebook to run BERT NLI model on Offenseval dataset: https://github.com/mrinaltak/HateSpeechDetection/blob/main/Sentence%20Entailment/Sentence_Entailment_Offenseval.ipynb 
 3. The weights for the best models on hateval and offenseval datasets can be found [here] (https://drive.google.com/drive/folders/1TTl7-7GWVQ9fy4YTDSdB5_NF14xBAi3u?usp=sharing) in the WeightsHateval and WeightsOffenseval folders.
