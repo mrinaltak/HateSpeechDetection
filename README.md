@@ -1,14 +1,14 @@
 # HateSpeechDetection
 
 ## Dataset overview:
-##OffensEval dataset(OLID) readme:
+### OffensEval dataset(OLID):
 
 Subtasks:
 - a: Offensive, Not offensive
 - b: Targeted, Untargeted
 - c: Individual | Group | Other
 
-##HatEval dataset readme:
+### HatEval dataset:
 
 Subtasks:
 - a: Hate, Not Hate
