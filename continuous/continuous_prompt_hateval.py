@@ -166,15 +166,15 @@ def create_input(model_name, batch):
         task_number.append(0)
         output_sequences.append(get_output(model_name, batch['HS'][idx]))
 
-        # if batch['HS'][idx]:
-        input_sequences.append(text)
-        task_number.append(1)
-        output_sequences.append(get_output(model_name, batch['TR'][idx]))
+        if batch['HS'][idx]:
+            input_sequences.append(text)
+            task_number.append(1)
+            output_sequences.append(get_output(model_name, batch['TR'][idx]))
 
-            # if batch['TR'][idx]:
-        input_sequences.append(text)
-        task_number.append(2)
-        output_sequences.append(get_output(model_name, batch['AG'][idx]))
+            if batch['TR'][idx]:
+                input_sequences.append(text)
+                task_number.append(2)
+                output_sequences.append(get_output(model_name, batch['AG'][idx]))
 
     return input_sequences, task_number, output_sequences
 
@@ -354,15 +354,14 @@ def tester(args, model, tokenizer, s_wte, test_dataloader):
     report = classification_report(y_true=task_gt[0], y_pred=task_preds[0])
     print(report)
     print("TR Report-\n")
-    report = classification_report(y_true=task_gt[1], y_pred=task_preds[1])
+    gt_ = np.array(task_gt[1])[np.array(task_gt[0]).astype(bool)]
+    pred_ = np.array(task_preds[1])[np.array(task_gt[0]).astype(bool)]
+    report = classification_report(y_true=gt_, y_pred=pred_)
     print(report)
     print("AG Report-\n")
-    report = classification_report(y_true=task_gt[1], y_pred=task_preds[1])
-    print(report)
-    print("Combined Report-\n")
-    total_task_gt = task_gt[0] + task_gt[1] + task_gt[2]
-    total_task_preds = task_preds[0] + task_preds[1] + task_preds[2]
-    report = classification_report(y_true=total_task_gt, y_pred=total_task_preds)
+    gt_ = np.array(task_gt[2])[np.array(task_gt[1]).astype(bool)]
+    pred_ = np.array(task_preds[2])[np.array(task_gt[1]).astype(bool)]
+    report = classification_report(y_true=gt_, y_pred=pred_)
     print(report)
     print("EMR", np.mean(emr))
 

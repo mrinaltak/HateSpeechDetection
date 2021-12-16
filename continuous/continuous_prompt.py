@@ -41,7 +41,7 @@ def arg_parse():
     parser.add_argument('--data_path', type=str, default='../OLID_dataset/', help='Root dataset')
     parser.add_argument('--seed', type=int, default=0, help='fix random seed')
     parser.add_argument('--batch_size', type=int, default=8, help='Size of training batch')
-    parser.add_argument('--epochs', type=int, default=5, help='Number of Epochs to Run')
+    parser.add_argument('--epochs', type=int, default=4, help='Number of Epochs to Run')
     parser.add_argument('--lr', type=float, default=3e-3, help='Learning Rate')
     parser.add_argument('--lr_decay', type=float, default=1, help='Learning Rate decay rate')
     parser.add_argument('--n_tokens', type=int, default=20, help='Number of Tokens in Continuous prompt')
@@ -76,6 +76,15 @@ def create_model(args):
     else:
         raise NotImplementedError('Model not supported: {}'.format(model_name))
     
+    #attach soft embeddings layer
+    s_wte = SoftEmbedding(model.get_input_embeddings(), 
+                      n_tokens=args.n_tokens, 
+                      initialize_from_vocab=args.initialize_from_vocab,
+                      n_tasks = args.n_tasks,
+                      device = args.device)
+    # model.set_input_embeddings(s_wte)
+    optimizer = AdamW([s_wte.learned_embedding], lr=args.lr, eps=1e-8)
+
     print("Freezing model params")
     if model_name in ['BERT', 'ELECTRA']:
         print("unfreeze classification head")
@@ -85,15 +94,6 @@ def create_model(args):
     else:
         for name, param in model.named_parameters():
             param.requires_grad = False
-
-    #attach soft embeddings layer
-    s_wte = SoftEmbedding(model.get_input_embeddings(), 
-                      n_tokens=args.n_tokens, 
-                      initialize_from_vocab=args.initialize_from_vocab,
-                      n_tasks = args.n_tasks,
-                      device = args.device)
-    # model.set_input_embeddings(s_wte)
-    optimizer = AdamW([s_wte.learned_embedding], lr=args.lr, eps=1e-8)
 
     if args.cuda:
         model = model.cuda()
@@ -122,7 +122,7 @@ def main():
     eval_batch_size = 1 if args.model in ['T5'] else args.batch_size
 
     train_dataset, val_dataset, test_a_dataset, test_b_dataset, test_c_dataset = load_data(args.data_path)
-    train_dataloader = torch.utils.data.DataLoader(train_dataset['train'], shuffle=True, batch_size=eval_batch_size)
+    train_dataloader = torch.utils.data.DataLoader(train_dataset['train'], shuffle=True, batch_size=args.batch_size)
     val_dataloader = torch.utils.data.DataLoader(val_dataset['val'], shuffle=True, batch_size=eval_batch_size)
     test_a_dataloader = torch.utils.data.DataLoader(test_a_dataset['test'], shuffle=True, batch_size=eval_batch_size)
     test_b_dataloader = torch.utils.data.DataLoader(test_b_dataset['test'], shuffle=True, batch_size=eval_batch_size)
@@ -428,9 +428,11 @@ def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
             if args.model in ['T5']:
                 output_dist = model(inputs_embeds=s_wte(input_ids), attention_mask=attention_mask, decoder_input_ids = decoder_input_ids.repeat(input_ids.shape[0],1)).logits
                 output_dist = output_dist[:,-1,[neg, pos]]
+                logits = output_dist.cpu().numpy()##logging
                 preds = torch.argmax(output_dist, dim=-1).cpu().numpy()
             else:
                 preds = model(inputs_embeds=s_wte(input_ids),attention_mask=attention_mask).logits
+                logits = preds.cpu().numpy()##logging
                 preds = torch.argmax(preds,dim=1).cpu().numpy()
 
         if task_name != 'subtask_c':
@@ -440,6 +442,7 @@ def tester(args, model, tokenizer, s_wte, test_dataloader, task_name):
                 else:
                     gt.append(0)
 
+                print(logits[i], batch['label'][i], gt[-1]==pred)
                 acc.append(pred)
                 input_text.append(sentences[i])
         else:
