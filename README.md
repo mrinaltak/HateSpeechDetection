@@ -20,3 +20,4 @@ All possible label combinations across all the sub-tasks are as below:
   - For Hateval, use continuous/continuous_prompt_hateval.py. Sample launch commands are provided in continuous/launch.sh
 - for evaluation, use the respective scripts with `--model_path` argument as the path to the model checkpoint and set `--epochs` to 0. This will run the test script directly.
 - for coss evaluation, run the hateval script with the OffensEval checkpoint, and `--n_tasks` as 4.
+- model checkpoints can be found [here](https://drive.google.com/drive/folders/1bQlz5FnOSBPgt32SGCnx4qKqy4duoGp5?usp=sharing)
