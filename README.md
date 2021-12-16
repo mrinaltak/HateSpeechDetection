@@ -15,9 +15,6 @@ Subtasks:
 - b: Targeted, Untargeted
 - c: Aggressive, Not aggresive
 
-
-## Setup
-
 ## Running the scripts:
 ### Baseline models
 #### BERT based basline models 
